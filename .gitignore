@@ -21,4 +21,5 @@ Thumbs.db
 
 # Local reference materials and headless-Chrome profiles
 raw/
+dist/
 dist/chrome-*/

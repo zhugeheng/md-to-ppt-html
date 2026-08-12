@@ -6,6 +6,7 @@
 
 ## Completed
 
+- 已基于当前 `examples/template.md` 重新生成并提交 `dist/template.html`，作为仓库内可直接打开的使用示例；其余 `dist/` 生成物继续忽略。
 - 已从 GitHub 仓库移除 `dist/` 生成目录，并在 `.gitignore` 中忽略该目录；本地生成物保留。
 - 已按要求删除 `examples/` 中的测试 Markdown：`section-width-test.md`、`symbol-style-test.md`、`wrap-test.md`；`dist/` 生成物保持不变。
 - 已初始化本地 Git 仓库并首次推送至 GitHub：`https://github.com/zhugeheng/md-to-ppt-html`；保留远程原有 `LICENSE`，未上传 `raw/` 参考截图或 `dist/chrome-*` 浏览器临时目录。
@@ -76,6 +77,7 @@
 
 ## Latest Verification
 
+- 示例 HTML 验证：`tools/md_to_ppt_html.py` 编译通过，并成功根据当前 `examples/template.md` 生成 `dist/template.html`；HTML 结构检查确认包含进度条和导航控件。
 - `dist/` 远程清理验证：Git 已不再跟踪 `dist/`，本地目录文件数量保持为 3,075。
 - 测试示例清理验证：`examples/` 中不再存在文件名包含 `test` 的文件。
 - GitHub 首次推送验证：本地 `main` 已跟踪 `origin/main` 且工作区干净；`git ls-remote --heads origin main` 返回远程 `main` 提交 `3f612f9`。

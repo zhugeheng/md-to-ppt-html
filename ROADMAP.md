@@ -6,6 +6,8 @@
 
 ## Completed
 
+- 已初始化本地 Git 仓库并首次推送至 GitHub：`https://github.com/zhugeheng/md-to-ppt-html`；保留远程原有 `LICENSE`，未上传 `raw/` 参考截图或 `dist/chrome-*` 浏览器临时目录。
+
 - 已创建 `AGENTS.md`，明确目录、生成物和验证规则。
 - 已创建 `tools/md_to_ppt_html.py`，实现 Markdown 转 PPT 风格 HTML 的 Python 转换器。
 - 已创建 `tools/verify_html_interaction.mjs`，用于本地 Chrome headless 键盘交互验证。
@@ -71,6 +73,8 @@
 - 无。
 
 ## Latest Verification
+
+- GitHub 首次推送验证：本地 `main` 已跟踪 `origin/main` 且工作区干净；`git ls-remote --heads origin main` 返回远程 `main` 提交 `3f612f9`。
 
 - 背景资源迁移与目录单列验证：`tools/live_editor.html` 内联脚本 Node 语法校验通过，确认背景路径为 `../assets/bg.png` 且不再包含 `../bg.png`；静态断言确认 `tools/md_to_ppt_html.py`、`tools/live_editor.html`、`dist/template.html` 和全局 skill 脚本均包含 `grid-template-columns: minmax(0, 1fr)`、不再包含旧 `grid-template-columns: 1fr 1fr`；`node tools\verify_html_interaction.mjs file:///D:/codex/ppt-html/dist/template.html#2 dist/template-agenda-single-column.png 0` 通过，生成目录页截图；Chrome headless 计算样式确认目录页 `gridTemplateColumns` 为单个 `1184px`、`columnCount: 1`、5 个目录项左边距一致。
 - Python 编译和重新生成命令本轮未能在沙箱内完成：当前 shell 未加载 `python`，`py -3.12` 在沙箱内提示 `No installed Python found`；提权调用实际 Python 路径被自动审批层因额度限制拦截。已用 Node 静态断言和 Chrome headless 渲染检查完成替代验证。

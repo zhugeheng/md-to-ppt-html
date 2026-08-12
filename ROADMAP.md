@@ -6,6 +6,7 @@
 
 ## Completed
 
+- 已在 `README.md` 增加视觉风格声明：说明默认页面参考张哥（视频号：`stormzhang`）直播课件，并附上「帅张和他的朋友们」知识星球学习邀请。
 - 已基于当前 `examples/template.md` 重新生成并提交 `dist/template.html`，作为仓库内可直接打开的使用示例；其余 `dist/` 生成物继续忽略。
 - 已从 GitHub 仓库移除 `dist/` 生成目录，并在 `.gitignore` 中忽略该目录；本地生成物保留。
 - 已按要求删除 `examples/` 中的测试 Markdown：`section-width-test.md`、`symbol-style-test.md`、`wrap-test.md`；`dist/` 生成物保持不变。
@@ -77,6 +78,7 @@
 
 ## Latest Verification
 
+- README 声明验证：视觉风格声明已位于项目简介之后、使用说明之前。
 - 示例 HTML 验证：`tools/md_to_ppt_html.py` 编译通过，并成功根据当前 `examples/template.md` 生成 `dist/template.html`；HTML 结构检查确认包含进度条和导航控件。
 - `dist/` 远程清理验证：Git 已不再跟踪 `dist/`，本地目录文件数量保持为 3,075。
 - 测试示例清理验证：`examples/` 中不再存在文件名包含 `test` 的文件。

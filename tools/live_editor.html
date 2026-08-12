@@ -1,0 +1,2276 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Markdown PPT HTML Live Editor</title>
+  <style>
+    :root {
+      --bg: #071014;
+      --panel: rgba(9, 20, 25, 0.88);
+      --panel-strong: rgba(13, 29, 35, 0.96);
+      --line: rgba(120, 220, 205, 0.22);
+      --line-soft: rgba(255, 255, 255, 0.08);
+      --text: #eef9f7;
+      --muted: #8da09f;
+      --soft: #bdd0ce;
+      --accent: #32d6c3;
+      --accent-2: #f3b85a;
+      --danger: #ff7d68;
+      --editor-font: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+      --ui-font: "Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--ui-font);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(5, 15, 18, 0.76), rgba(5, 15, 18, 0.35)),
+        url("../assets/bg.png") center / cover no-repeat;
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(rgba(120, 220, 205, 0.16) 1px, transparent 1px);
+      background-size: 24px 24px;
+      mask-image: linear-gradient(90deg, #000 0%, rgba(0, 0, 0, 0.72) 52%, rgba(0, 0, 0, 0.18) 100%);
+      pointer-events: none;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-rows: 64px minmax(0, 1fr);
+      height: 100%;
+      padding: 16px;
+      gap: 14px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) auto;
+      align-items: center;
+      min-height: 0;
+      padding: 0 2px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(50, 214, 195, 0.42);
+      background: rgba(50, 214, 195, 0.08);
+      color: var(--accent);
+      font-family: var(--editor-font);
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .button {
+      height: 38px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: rgba(9, 20, 25, 0.76);
+      color: var(--soft);
+      font: 600 13px var(--ui-font);
+      cursor: pointer;
+    }
+
+    .button:hover {
+      border-color: rgba(50, 214, 195, 0.72);
+      color: #ffffff;
+      background: rgba(20, 46, 52, 0.9);
+    }
+
+    .button.primary {
+      color: #05201e;
+      background: var(--accent);
+      border-color: transparent;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(340px, 42%) minmax(420px, 58%);
+      gap: 14px;
+      min-height: 0;
+    }
+
+    .pane {
+      min-width: 0;
+      min-height: 0;
+      border: 1px solid var(--line-soft);
+      background: var(--panel);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
+      overflow: hidden;
+    }
+
+    .pane-head {
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--line-soft);
+      background: var(--panel-strong);
+    }
+
+    .pane-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #eafffb;
+    }
+
+    .pane-title::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      background: var(--accent);
+      box-shadow: 0 0 18px rgba(50, 214, 195, 0.75);
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .editor-wrap {
+      height: calc(100% - 44px);
+      position: relative;
+    }
+
+    textarea {
+      width: 100%;
+      height: 100%;
+      display: block;
+      resize: none;
+      border: 0;
+      outline: 0;
+      padding: 22px 22px 84px;
+      color: #eaf7f4;
+      background:
+        linear-gradient(90deg, rgba(50, 214, 195, 0.08) 1px, transparent 1px) 0 0 / 48px 48px,
+        linear-gradient(rgba(50, 214, 195, 0.05) 1px, transparent 1px) 0 0 / 48px 48px,
+        rgba(2, 10, 12, 0.58);
+      font: 14px/1.78 var(--editor-font);
+      tab-size: 2;
+      caret-color: var(--accent);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(50, 214, 195, 0.42) rgba(5, 14, 17, 0.78);
+    }
+
+    textarea::selection {
+      background: rgba(50, 214, 195, 0.28);
+    }
+
+    textarea::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+      background: rgba(5, 14, 17, 0.78);
+    }
+
+    textarea::-webkit-scrollbar-track {
+      background:
+        linear-gradient(180deg, rgba(50, 214, 195, 0.06), rgba(50, 214, 195, 0.02)),
+        rgba(5, 14, 17, 0.9);
+      border-left: 1px solid rgba(50, 214, 195, 0.08);
+    }
+
+    textarea::-webkit-scrollbar-thumb {
+      min-height: 42px;
+      border: 2px solid rgba(5, 14, 17, 0.9);
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(50, 214, 195, 0.72), rgba(50, 214, 195, 0.28));
+      box-shadow: inset 0 0 0 1px rgba(234, 255, 251, 0.08);
+    }
+
+    textarea::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, rgba(50, 214, 195, 0.9), rgba(50, 214, 195, 0.42));
+    }
+
+    textarea::-webkit-scrollbar-corner {
+      background: rgba(5, 14, 17, 0.9);
+    }
+
+    .editor-footer {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(5, 14, 17, 0.86);
+      backdrop-filter: blur(10px);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .sync-state {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--soft);
+    }
+
+    .pulse {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 18px rgba(50, 214, 195, 0.9);
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 10;
+      top: 84px;
+      right: 24px;
+      display: flex;
+      align-items: center;
+      min-width: 220px;
+      min-height: 44px;
+      padding: 0 16px;
+      border: 1px solid rgba(50, 214, 195, 0.42);
+      border-radius: 6px;
+      background: rgba(7, 22, 26, 0.96);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.34), 0 0 28px rgba(50, 214, 195, 0.18);
+      color: #eafffb;
+      font-size: 13px;
+      font-weight: 700;
+      opacity: 0;
+      transform: translateY(-10px);
+      pointer-events: none;
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .toast.error {
+      border-color: rgba(255, 125, 104, 0.62);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.34), 0 0 28px rgba(255, 125, 104, 0.16);
+    }
+
+    .preview-shell {
+      height: calc(100% - 44px);
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 28%),
+        rgba(0, 0, 0, 0.22);
+    }
+
+    .preview-frame-wrap {
+      position: relative;
+      width: 100%;
+      max-width: min(100%, calc((100vh - 158px) * 16 / 9));
+      aspect-ratio: 16 / 9;
+      border: 1px solid rgba(50, 214, 195, 0.26);
+      background: #050d10;
+      box-shadow: 0 28px 90px rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+      --preview-scale: 1;
+    }
+
+    iframe {
+      width: 1920px;
+      height: 1080px;
+      display: block;
+      border: 0;
+      background: #061012;
+      transform: scale(var(--preview-scale));
+      transform-origin: 0 0;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        overflow: auto;
+        height: auto;
+        min-height: 100%;
+      }
+
+      body {
+        overflow: auto;
+      }
+
+      .topbar,
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+      }
+
+      .pane {
+        min-height: 520px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">MD</div>
+        <div>
+          <h1>Markdown PPT HTML 实时编辑器</h1>
+          <div class="subtitle">左侧编辑 Markdown，右侧实时生成可翻页 HTML 预览</div>
+        </div>
+      </div>
+      <div class="actions">
+        <input id="showAgenda" type="checkbox" checked hidden>
+        <input id="stepReveal" type="checkbox" checked hidden>
+        <button class="button" id="saveMarkdown" type="button" title="保存当前 Markdown 到浏览器本地存储">✓ 保存 Markdown</button>
+        <button class="button primary" id="downloadHtml" type="button" title="下载右侧预览对应的 HTML">⇩ 下载 HTML</button>
+      </div>
+    </header>
+
+    <section class="workspace" aria-label="Markdown editor and HTML preview">
+      <section class="pane">
+        <div class="pane-head">
+          <div class="pane-title">Markdown 输入</div>
+          <div class="meta" id="editorMeta">0 字 · 0 行</div>
+        </div>
+        <div class="editor-wrap">
+          <textarea id="editor" spellcheck="false">---
+agenda: true
+step_reveal: true
+---
+
+# 从你天天用的产品里找金矿
+
+产品思维 —— 动手做之前，先想清楚要做什么
+
+AI 学习之路 · 实战篇 07
+
+## 01 普通人做产品的两个心法
+
+## 心法一：金矿就在你手机里
+
+[] **需求真实**：用了上千次，哪里不爽你身体记得
+[] **大厂顾不上**：它们只做几亿人的最大公约数
+[] **AI 给了机会**：一个人就能做只服务自己的定制版
+
+## 餐厅菜单的变化
+
+> 以前只能进餐厅，菜单是别人定的；现在你有一个 AI 厨师。
+
+私房菜不会火遍全国，但能让你天天吃得舒服
+
+## 02 需求挖掘：三把铲子
+
+## 正确的调研姿势
+
+· **盯住老对手**：它占着你的习惯、时间和数据
+· **别看官网**：官网是为了卖货，只写优点
+· **搜负面词**：「难用」「替代」比正面词信息量大十倍
+
+## 03 MVP 定义：砍到只剩一刀
+
+## 砍功能三把刀
+
+1. **这是不是核心？**：砍掉它产品还成立吗？成立就砍
+2. **现在能不能不要？**：一个月后再加行不行？行就砍
+3. **不做会死人吗？**：没人因它哭、因它流失，砍
+
+## 04 机会缺口：四种口子
+
+## 只做痛点，不碰痒点
+
+:: **痒点**：想想就过，不解决也无所谓；「有个 App 能 XX 就酷了」；你不会真去用
+:: **痛点**：反复扎你，不解决持续难受；「找资料每次要翻半小时」；你愿意为它付出代价
+
+## 四种典型机会缺口
+
+[] **场景缺口**：同样的事，换个场景没人做
+[] **人群缺口**：小众群体永远在凑合用
+[] **体验缺口**：功能都有，但用起来痛苦
+[] **AI Native 缺口**：把老产品用 AI 重新做一遍
+
+## AI 编程助手对比
+
+| 维度 | Codex（OpenAI） | Claude Code（Anthropic） |
+| --- | --- | --- |
+| 出身 | OpenAI，底层用 GPT 系列模型 | Anthropic，底层用 Claude 系列模型 |
+| 最顺手的入口 | 官方做了图形界面桌面 App，对不碰命令行的人友好 | 终端（CLI）原生，功能最全也最能讲透原理 |
+| 项目说明文件 | `AGENTS.md` | `CLAUDE.md` |
+| 四种入口 | 桌面 App / CLI / IDE 扩展 / 云端 Web | 终端 / 编辑器插件 / 桌面 App / 网页-手机 |
+| 能不能改文件、跑命令 | 能，是个真·代理 | 能，是个真·代理 |
+
+## 能力权益区分
+
+| 状态 | 内容 |
+| --- | --- |
+| ✓ | 每月 500 Credits |
+| ✓ | 对话和问答频率限制 |
+| ✓ | 代码实时续写 |
+| ✓ | 跨文件理解能力 |
+| ✓ | 注释生成代码 |
+| ✗ | 个人加量包购买 |
+
+## 用一句话锁死你的位置
+
+> 我做的是一个给 ___ 用的 ___，跟 ___ 不一样的地方是 ___。
+
+用一句话锁定你的位置，否则别动手
+
+## 图文示例：进存取通用模板
+
+左边是「进」，中间是「存」的分层，右边是「取」。
+
+后面所有架构图，都可以是这张图的变种。
+
+![进存取通用模板](../raw/微信图片_20260619101033_246_230.png)
+
+## 05 最小验证：14 天不自嗨
+
+## 最小验证的判断标准
+
+- **有人愿意试**：不是点赞，是愿意把真实数据交给你
+- **有人愿意等**：功能还粗糙，但用户会追问下一版
+- **有人愿意付出成本**：钱、时间、迁移成本，至少占一样
+
+## 结尾
+
+> 不要先做一个完整产品，先做一个让自己无法回头的小工具。
+
+产品从来不是页面堆出来的，是从一个真实痛点里长出来的
+</textarea>
+          <div class="editor-footer">
+            <div class="sync-state"><span class="pulse"></span><span id="syncText">实时同步中</span></div>
+            <div>光标所在章节会自动定位到右侧页面</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="pane">
+        <div class="pane-head">
+          <div class="pane-title">HTML 页面预览</div>
+          <div class="meta" id="previewMeta">0 / 0</div>
+        </div>
+        <div class="preview-shell">
+          <div class="preview-frame-wrap">
+            <iframe id="preview" title="PPT HTML preview"></iframe>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+  <div class="toast" id="saveToast" role="status" aria-live="polite">Markdown 已保存成功</div>
+
+  <script>
+    const editor = document.getElementById("editor");
+    const preview = document.getElementById("preview");
+    const previewFrameWrap = document.querySelector(".preview-frame-wrap");
+    const editorMeta = document.getElementById("editorMeta");
+    const previewMeta = document.getElementById("previewMeta");
+    const syncText = document.getElementById("syncText");
+    const saveToast = document.getElementById("saveToast");
+    const showAgendaInput = document.getElementById("showAgenda");
+    const stepRevealInput = document.getElementById("stepReveal");
+    const initialMarkdown = editor.value;
+    const STORAGE_KEY = "ppt-html-live-editor-markdown";
+    const savedMarkdown = loadSavedMarkdown();
+    if (savedMarkdown !== null) {
+      editor.value = savedMarkdown;
+    }
+    let currentHtml = "";
+    let previewHtml = "";
+    let renderTimer = 0;
+    let toastTimer = 0;
+    let lastSlides = [];
+    let exportControlsTouched = false;
+    const pointMarkerStyles = {
+      "[]": "matrix-feature",
+      "·": "cards",
+      "::": "matrix-list",
+    };
+
+    function showToast(message, isError = false) {
+      clearTimeout(toastTimer);
+      saveToast.textContent = message;
+      saveToast.classList.toggle("error", isError);
+      saveToast.classList.add("show");
+      toastTimer = setTimeout(() => {
+        saveToast.classList.remove("show");
+      }, 1800);
+    }
+
+    function loadSavedMarkdown() {
+      try {
+        return localStorage.getItem(STORAGE_KEY);
+      } catch {
+        return null;
+      }
+    }
+
+    function saveMarkdown(showStatus = false) {
+      try {
+        localStorage.setItem(STORAGE_KEY, editor.value);
+        localStorage.setItem(`${STORAGE_KEY}:savedAt`, new Date().toISOString());
+        if (showStatus) {
+          syncText.textContent = "Markdown 已保存";
+          showToast("Markdown 已保存成功");
+        }
+        return true;
+      } catch {
+        if (showStatus) {
+          syncText.textContent = "Markdown 保存失败";
+          showToast("Markdown 保存失败", true);
+        }
+        return false;
+      }
+    }
+
+    function resizePreviewFrame() {
+      if (!previewFrameWrap) {
+        return;
+      }
+      const scale = Math.min(previewFrameWrap.clientWidth / 1920, previewFrameWrap.clientHeight / 1080);
+      previewFrameWrap.style.setProperty("--preview-scale", String(scale));
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function inlineMarkdown(value) {
+      return escapeHtml(value)
+        .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+        .replace(/(`+)([^`]+)\1/g, "<code>$2</code>")
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+    }
+
+    function cleanMarkup(value) {
+      return value.replace(/[*_`]+/g, "").trim();
+    }
+
+    function splitItem(value) {
+      const raw = value.trim();
+      const match = raw.match(/^(.+?)[：:]\s*(.+)$/);
+      if (match) {
+        return { title: match[1].trim(), detail: match[2].trim() };
+      }
+      return { title: raw, detail: "" };
+    }
+
+    function splitDetails(value) {
+      return value
+        .split(/[；;｜|]/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+
+    function pointMarkerMatch(value) {
+      const marker = value.match(/^\s*(\[\]|·|::)\s+(.+)$/);
+      if (!marker) {
+        return null;
+      }
+      return { marker: marker[1], text: marker[2], style: pointMarkerStyles[marker[1]] };
+    }
+
+    function splitTableRow(line) {
+      let stripped = line.trim();
+      if (stripped.startsWith("|")) {
+        stripped = stripped.slice(1);
+      }
+      if (stripped.endsWith("|")) {
+        stripped = stripped.slice(0, -1);
+      }
+      return stripped.split("|").map((cell) => cell.trim());
+    }
+
+    function isTableSeparator(line) {
+      const cells = splitTableRow(line);
+      return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell));
+    }
+
+    function isTableStart(lines, index) {
+      return index + 1 < lines.length && lines[index].trim().startsWith("|") && isTableSeparator(lines[index + 1]);
+    }
+
+    function parseStatusMarker(value) {
+      const match = cleanMarkup(value).match(/^(✓|✔|✅|✗|×|✕|❌)\s*(.*)$/);
+      if (!match) {
+        return null;
+      }
+      const state = ["✗", "×", "✕", "❌"].includes(match[1]) ? "no" : "ok";
+      return { state, label: match[2].trim() };
+    }
+
+    function isStatusTable(block) {
+      if (!block || block.headers.length !== 2 || !block.rows.length) {
+        return false;
+      }
+      if (!/(状态|支持|是否|有无|可用|结果)/.test(cleanMarkup(block.headers[0]))) {
+        return false;
+      }
+      return block.rows.every((row) => row.length && parseStatusMarker(row[0]));
+    }
+
+    function parseBoolean(value) {
+      const normalized = String(value || "").trim().replace(/^['"]|['"]$/g, "").toLowerCase();
+      if (["true", "yes", "y", "1", "on"].includes(normalized)) {
+        return true;
+      }
+      if (["false", "no", "n", "0", "off"].includes(normalized)) {
+        return false;
+      }
+      return undefined;
+    }
+
+    function splitFrontmatter(source) {
+      const normalized = source.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      const lines = normalized.split("\n");
+      if (!lines.length || lines[0].trim() !== "---") {
+        return { settings: {}, body: source, bodyOffset: 0 };
+      }
+      const end = lines.findIndex((line, index) => index > 0 && line.trim() === "---");
+      if (end < 0) {
+        return { settings: {}, body: source, bodyOffset: 0 };
+      }
+      const aliases = {
+        agenda: "showAgenda",
+        show_agenda: "showAgenda",
+        "show-agenda": "showAgenda",
+        step_reveal: "stepReveal",
+        "step-reveal": "stepReveal",
+        stepReveal: "stepReveal"
+      };
+      const settings = {};
+      lines.slice(1, end).forEach((line) => {
+        const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_-]*)\s*:\s*(.+?)\s*$/);
+        if (!match) {
+          return;
+        }
+        const key = aliases[match[1].trim()];
+        const value = parseBoolean(match[2]);
+        if (key && value !== undefined) {
+          settings[key] = value;
+        }
+      });
+      const bodyStartLine = end + 1;
+      const bodyOffset = lines.slice(0, bodyStartLine).join("\n").length + 1;
+      return { settings, body: lines.slice(bodyStartLine).join("\n"), bodyOffset };
+    }
+
+    function readExportControls() {
+      return {
+        showAgenda: showAgendaInput.checked,
+        stepReveal: stepRevealInput.checked
+      };
+    }
+
+    function syncExportControls(settings) {
+      if (exportControlsTouched) {
+        return;
+      }
+      if (Object.prototype.hasOwnProperty.call(settings, "showAgenda")) {
+        showAgendaInput.checked = settings.showAgenda;
+      }
+      if (Object.prototype.hasOwnProperty.call(settings, "stepReveal")) {
+        stepRevealInput.checked = settings.stepReveal;
+      }
+    }
+
+    function parseBlocks(lines) {
+      const blocks = [];
+      let paragraph = [];
+
+      function flushParagraph() {
+        if (paragraph.length) {
+          blocks.push({ type: "paragraph", text: paragraph.join("\n") });
+          paragraph = [];
+        }
+      }
+
+      for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index];
+        const trimmed = line.trim();
+        if (!trimmed || /^<!--\s*point-style\s*:/.test(trimmed)) {
+          flushParagraph();
+          continue;
+        }
+
+        if (isTableStart(lines, index)) {
+          flushParagraph();
+          const headers = splitTableRow(lines[index]);
+          index += 2;
+          const rows = [];
+          while (index < lines.length && lines[index].trim().startsWith("|")) {
+            const row = splitTableRow(lines[index]);
+            while (row.length < headers.length) {
+              row.push("");
+            }
+            rows.push(row.slice(0, headers.length));
+            index += 1;
+          }
+          index -= 1;
+          blocks.push({ type: "table", headers, rows });
+          continue;
+        }
+
+        const image = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+        if (image) {
+          flushParagraph();
+          blocks.push({ type: "image", alt: image[1], src: image[2] });
+          continue;
+        }
+
+        if (/^>\s?/.test(trimmed)) {
+          flushParagraph();
+          const quoteLines = [];
+          while (index < lines.length && /^>\s?/.test(lines[index].trim())) {
+            quoteLines.push(lines[index].trim().replace(/^>\s?/, ""));
+            index += 1;
+          }
+          index -= 1;
+          blocks.push({ type: "quote", text: quoteLines.join("\n") });
+          continue;
+        }
+
+        const pointMarker = pointMarkerMatch(trimmed);
+        if (pointMarker) {
+          flushParagraph();
+          const items = [];
+          const pointStyle = pointMarker.style;
+          while (index < lines.length) {
+            const marker = pointMarkerMatch(lines[index].trim());
+            if (!marker) {
+              break;
+            }
+            items.push(splitItem(marker.text));
+            index += 1;
+          }
+          index -= 1;
+          blocks.push({ type: "list", items, pointStyle });
+          continue;
+        }
+
+        if (/^[-*]\s+/.test(trimmed)) {
+          flushParagraph();
+          const items = [];
+          while (index < lines.length && /^[-*]\s+/.test(lines[index].trim())) {
+            items.push(splitItem(lines[index].trim().replace(/^[-*]\s+/, "")));
+            index += 1;
+          }
+          index -= 1;
+          blocks.push({ type: "list", items });
+          continue;
+        }
+
+        if (/^\d+\.\s+/.test(trimmed)) {
+          flushParagraph();
+          const items = [];
+          while (index < lines.length && /^\d+\.\s+/.test(lines[index].trim())) {
+            items.push(splitItem(lines[index].trim().replace(/^\d+\.\s+/, "")));
+            index += 1;
+          }
+          index -= 1;
+          blocks.push({ type: "ordered", items });
+          continue;
+        }
+
+        paragraph.push(trimmed);
+      }
+
+      flushParagraph();
+      return blocks;
+    }
+
+    function parseMarkdown(source, options = {}, sourceOffset = 0) {
+      const lines = source.replace(/\r\n/g, "\n").split("\n");
+      const slides = [];
+      let current = null;
+      let offset = sourceOffset;
+
+      for (const line of lines) {
+        const heading = line.match(/^(#{1,2})\s+(.+)$/);
+        if (heading) {
+          if (current) {
+            slides.push(current);
+          }
+          current = {
+            title: heading[2].trim(),
+            level: heading[1].length,
+            lines: [],
+            sourceStart: offset,
+            explicitStyle: ""
+          };
+        } else if (current) {
+          const directive = line.match(/^\s*<!--\s*point-style\s*:\s*([a-zA-Z0-9_-]+)\s*-->\s*$/);
+          if (directive) {
+            current.explicitStyle = directive[1].trim();
+          }
+          current.lines.push(line);
+        } else if (line.trim()) {
+          current = {
+            title: "未命名页面",
+            level: 2,
+            lines: [line],
+            sourceStart: offset,
+            explicitStyle: ""
+          };
+        }
+        offset += line.length + 1;
+      }
+      if (current) {
+        slides.push(current);
+      }
+
+      slides.forEach((slide) => {
+        slide.blocks = parseBlocks(slide.lines);
+        classifySlide(slide);
+      });
+
+      balancePointLayouts(slides);
+      return options.showAgenda === false ? slides : addAgenda(slides);
+    }
+
+    function classifySlide(slide) {
+      if (slide.level === 1) {
+        slide.layout = "cover";
+        return;
+      }
+      if (!slide.blocks.length) {
+        slide.layout = "section";
+        return;
+      }
+      if (slide.blocks.some((block) => block.type === "table")) {
+        const table = slide.blocks.find((block) => block.type === "table");
+        slide.layout = isStatusTable(table) ? "status_list" : "compare_table";
+        return;
+      }
+      if (slide.blocks.some((block) => block.type === "image")) {
+        slide.layout = "image_text";
+        return;
+      }
+      if (slide.blocks.some((block) => block.type === "ordered")) {
+        slide.layout = "timeline";
+        return;
+      }
+      if (slide.blocks.some((block) => block.type === "quote")) {
+        slide.layout = "quote";
+        return;
+      }
+      const list = slide.blocks.find((block) => block.type === "list");
+      if (list) {
+        const style = (list.pointStyle || slide.explicitStyle || "").toLowerCase();
+        if (style === "cards") {
+          slide.layout = "cards";
+        } else if (style === "matrix-list" || style === "matrix-feature" || style === "matrix") {
+          slide.layout = "matrix";
+          slide.matrixStyle = style === "matrix" ? "" : style;
+        } else {
+          slide.layout = list.items.length >= 2 && list.items.length <= 6 ? "matrix" : "cards";
+        }
+        return;
+      }
+      const textLength = slide.blocks.map((block) => block.text || "").join("").length;
+      slide.layout = textLength < 90 ? "statement" : "content";
+    }
+
+    function balancePointLayouts(slides) {
+      let previous = "";
+      slides.forEach((slide) => {
+        const list = slide.blocks.find((block) => block.type === "list");
+        if (!["cards", "matrix"].includes(slide.layout) || slide.explicitStyle || (list && list.pointStyle)) {
+          return;
+        }
+        if (!list) {
+          return;
+        }
+        const hasSplitDetails = list.items.some((item) => splitDetails(item.detail).length > 1);
+        const choices = [];
+        if (list.items.length >= 2 && list.items.length <= 6) {
+          choices.push(hasSplitDetails ? "matrix-list" : "matrix-feature");
+          choices.push("cards");
+        } else {
+          choices.push("cards");
+        }
+        const selected = choices.find((choice) => choice !== previous) || choices[0];
+        previous = selected;
+        if (selected === "cards") {
+          slide.layout = "cards";
+        } else {
+          slide.layout = "matrix";
+          slide.matrixStyle = selected;
+        }
+      });
+    }
+
+    function addAgenda(slides) {
+      const sections = slides.filter((slide) => slide.layout === "section").map((slide) => slide.title);
+      if (!sections.length) {
+        return slides;
+      }
+      const agenda = {
+        title: "目录",
+        level: 2,
+        layout: "agenda",
+        blocks: [],
+        sourceStart: slides[0] ? slides[0].sourceStart : 0,
+        synthetic: true,
+        agendaItems: sections
+      };
+      if (slides[0] && slides[0].layout === "cover") {
+        return [slides[0], agenda, ...slides.slice(1)];
+      }
+      return [agenda, ...slides];
+    }
+
+    function contentParagraphs(slide) {
+      return slide.blocks
+        .filter((block) => block.type === "paragraph")
+        .map((block) => `      <p>${inlineMarkdown(block.text)}</p>`)
+        .join("");
+    }
+
+    function renderPlainBlocks(blocks) {
+      return blocks.map((block) => {
+        if (block.type === "paragraph") {
+          return `      <p>${inlineMarkdown(block.text)}</p>`;
+        }
+        if (block.type === "quote") {
+          return `      <blockquote>${inlineMarkdown(block.text)}</blockquote>`;
+        }
+        if (block.type === "list" || block.type === "ordered") {
+          const tag = block.type === "ordered" ? "ol" : "ul";
+          return `      <${tag}>${block.items.map((item) => `<li>${inlineMarkdown(item.title)}</li>`).join("")}</${tag}>`;
+        }
+        if (block.type === "table") {
+          return "      <p>表格内容请使用对比表格版式查看。</p>";
+        }
+        return "";
+      }).filter(Boolean).join("\n");
+    }
+
+    function splitSectionNumber(title, fallback) {
+      const cleaned = cleanMarkup(title);
+      const match = cleaned.match(/^(\d{1,2})[\s.、-]*(.+)$/);
+      if (match) {
+        return { number: match[1].padStart(2, "0"), text: match[2].trim() };
+      }
+      return { number: String(fallback).padStart(2, "0"), text: cleaned };
+    }
+
+    function renderSlideBody(slide, page) {
+      if (slide.layout === "cover") {
+        const paragraphs = slide.blocks.filter((block) => block.type === "paragraph").map((block) => block.text);
+        const subtitle = paragraphs[0] || "Markdown to HTML Presentation";
+        const kicker = paragraphs[1] || "AI Learning Path · Practice";
+        return `    <div class="cover-copy">
+      <p class="kicker">${inlineMarkdown(kicker)}</p>
+      <h1>${inlineMarkdown(slide.title)}</h1>
+      <p class="subtitle">${inlineMarkdown(subtitle)}</p>
+    </div>
+    <div class="brand-mark">ppt-html</div>`;
+      }
+
+      if (slide.layout === "agenda") {
+        const rows = slide.agendaItems.map((item, index) => {
+          const section = splitSectionNumber(item, index + 1);
+          return `      <li>
+        <span>${section.number}</span>
+        <strong>${inlineMarkdown(section.text)}</strong>
+      </li>`;
+        }).join("\n");
+        return `    <div class="agenda">
+      <h2>${inlineMarkdown(slide.title)}</h2>
+      <ol>
+${rows}
+      </ol>
+    </div>`;
+      }
+
+      if (slide.layout === "section") {
+        const section = splitSectionNumber(slide.title, 1);
+        return `    <div class="section-title">
+      <div class="section-number">${section.number}</div>
+      <h2>${inlineMarkdown(section.text)}</h2>
+    </div>`;
+      }
+
+      if (slide.layout === "quote") {
+        const quote = slide.blocks.find((block) => block.type === "quote");
+        const paragraphs = slide.blocks.filter((block) => block.type === "paragraph").map((block) => block.text);
+        const caption = paragraphs[0] || slide.title;
+        return `    <figure class="quote-block">
+      <div class="quote-mark" aria-hidden="true"><span></span><span></span></div>
+      <blockquote>${inlineMarkdown(quote ? quote.text : "")}</blockquote>
+      <figcaption>- ${inlineMarkdown(caption)}</figcaption>
+    </figure>`;
+      }
+
+      if (slide.layout === "timeline") {
+        const list = slide.blocks.find((block) => block.type === "ordered");
+        const rows = list.items.map((item, index) => `      <li class="fragment">
+        <span>${index + 1}</span>
+        <div>
+          <h3>${inlineMarkdown(item.title)}</h3>
+          ${item.detail ? `<p>${inlineMarkdown(item.detail)}</p>` : ""}
+        </div>
+      </li>`).join("\n");
+        return `    <div class="timeline">
+      <h2>${inlineMarkdown(slide.title)}</h2>
+      <ol>
+${rows}
+      </ol>
+    </div>`;
+      }
+
+      if (slide.layout === "cards") {
+        const list = slide.blocks.find((block) => block.type === "list");
+        const cards = list.items.map((item) => `      <article class="point-card fragment">
+        <span class="dot"></span>
+        <div>
+          <h3>${inlineMarkdown(item.title)}</h3>
+          ${item.detail ? `<p>${inlineMarkdown(item.detail)}</p>` : ""}
+        </div>
+      </article>`).join("\n");
+        return `    <div class="content-stack">
+      <h2>${inlineMarkdown(slide.title)}</h2>
+      <div class="card-list">
+${cards}
+      </div>
+    </div>`;
+      }
+
+      if (slide.layout === "matrix") {
+        const list = slide.blocks.find((block) => block.type === "list");
+        const matrixStyle = slide.matrixStyle || (list.items.some((item) => splitDetails(item.detail).length > 1) ? "matrix-list" : "matrix-feature");
+        const style = matrixStyle === "matrix-list" ? "list" : "feature";
+        const cards = list.items.map((item, index) => renderMatrixItem(item, index, style)).join("\n");
+        return `    <div class="matrix-wrap matrix-style-${style}">
+      <h2>${inlineMarkdown(slide.title)}</h2>
+      <div class="matrix-grid matrix-count-${list.items.length}">
+${cards}
+      </div>
+    </div>`;
+      }
+
+      if (slide.layout === "image_text") {
+        const image = slide.blocks.find((block) => block.type === "image");
+        const textHtml = renderPlainBlocks(slide.blocks.filter((block) => block.type !== "image"));
+        return `    <div class="image-text">
+      <div class="image-copy">
+        <h2>${inlineMarkdown(slide.title)}</h2>
+${textHtml}
+      </div>
+      <figure class="image-frame">
+        <img src="${escapeHtml(image.src)}" alt="${escapeHtml(image.alt || slide.title)}">
+      </figure>
+    </div>`;
+      }
+
+      if (slide.layout === "compare_table") {
+        const table = slide.blocks.find((block) => block.type === "table");
+        const headHtml = table.headers.map((header) => `<th>${inlineMarkdown(header)}</th>`).join("");
+        const bodyRows = table.rows.map((row) => {
+          const cells = row.map((cell, index) => {
+            const tag = index === 0 ? "th" : "td";
+            const scope = index === 0 ? ' scope="row"' : "";
+            return `<${tag}${scope}>${renderStatusCell(cell)}</${tag}>`;
+          }).join("");
+          return `        <tr>${cells}</tr>`;
+        }).join("\n");
+        return `    <div class="compare-table-wrap">
+      <h2>${inlineMarkdown(slide.title)}</h2>
+      <div class="compare-table-frame">
+        <table class="compare-table">
+          <thead>
+            <tr>${headHtml}</tr>
+          </thead>
+          <tbody>
+${bodyRows}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+      }
+
+      if (slide.layout === "status_list") {
+        const table = slide.blocks.find((block) => block.type === "table");
+        const items = table.rows.map((row) => {
+          const status = parseStatusMarker(row[0]);
+          if (!status) {
+            return "";
+          }
+          const label = row[1] || status.label;
+          const icon = status.state === "ok" ? "✓" : "×";
+          return `        <li class="status-item status-${status.state}">
+          <span class="status-icon">${icon}</span>
+          <span>${inlineMarkdown(label)}</span>
+        </li>`;
+        }).filter(Boolean).join("\n");
+        return `    <div class="status-list-wrap">
+      <h2>${inlineMarkdown(slide.title)}</h2>
+      <ul class="status-list">
+${items}
+      </ul>
+    </div>`;
+      }
+
+      if (slide.layout === "statement") {
+        return `    <div class="statement">
+      <h2>${inlineMarkdown(slide.title)}</h2>
+${renderPlainBlocks(slide.blocks)}
+    </div>`;
+      }
+
+      return `    <div class="content-stack">
+      <h2>${inlineMarkdown(slide.title)}</h2>
+${renderPlainBlocks(slide.blocks)}
+    </div>`;
+    }
+
+    function renderStatusCell(value) {
+      const status = parseStatusMarker(value);
+      if (!status) {
+        return inlineMarkdown(value);
+      }
+      const icon = status.state === "ok" ? "✓" : "×";
+      const content = status.label ? inlineMarkdown(status.label) : (status.state === "ok" ? "支持" : "不支持");
+      return `<span class="status-cell status-${status.state}"><span class="status-icon">${icon}</span><span>${content}</span></span>`;
+    }
+
+    function renderMatrixItem(item, index, style) {
+      const details = splitDetails(item.detail);
+      const detailHtml = details.length
+        ? `<ul>${details.map((line) => `<li>${inlineMarkdown(line)}</li>`).join("")}</ul>`
+        : (item.detail ? `<p>${inlineMarkdown(item.detail)}</p>` : "");
+      const emphasis = style === "list" && index === 1 ? " is-emphasis" : "";
+      return `      <article class="matrix-card${emphasis} fragment">
+        <span class="matrix-icon"></span>
+        <h3>${inlineMarkdown(item.title)}</h3>
+        ${detailHtml}
+      </article>`;
+    }
+
+    function renderSlide(slide, page, total) {
+      return `<section class="slide layout-${slide.layout}" data-page="${page}" data-total="${total}" data-source-start="${slide.sourceStart || 0}">
+  <div class="slide-bg"></div>
+  <div class="slide-inner">
+${renderSlideBody(slide, page)}
+  </div>
+</section>`;
+    }
+
+    function deckScript(initialPage, previewMode = false, stepReveal = true) {
+      return `const slides = Array.from(document.querySelectorAll(".slide"));
+    const progress = document.querySelector("#progress span");
+    const counter = document.querySelector("#counter");
+    const initialPage = ${initialPage - 1};
+    const previewMode = ${previewMode ? "true" : "false"};
+    const stepReveal = ${stepReveal ? "true" : "false"};
+    const reveals = slides.map(() => 0);
+
+    function pageFromHash() {
+      return Math.min(Math.max(parseInt(location.hash.slice(1), 10) || 1, 1), slides.length) - 1;
+    }
+
+    function isReloadNavigation() {
+      const navigation = performance.getEntriesByType && performance.getEntriesByType("navigation")[0];
+      if (navigation) {
+        return navigation.type === "reload";
+      }
+      return performance.navigation && performance.navigation.type === 1;
+    }
+
+    function hasDeckHistoryState() {
+      return Boolean(history.state && history.state.markdownPptHtmlOpened);
+    }
+
+    function hasOpenedInThisTab() {
+      if (hasDeckHistoryState()) {
+        return true;
+      }
+      const sessionKey = \`markdown-ppt-html-opened:\${location.pathname}\`;
+      const windowMarker = \`|\${sessionKey}|\`;
+      let opened = false;
+      try {
+        opened = sessionStorage.getItem(sessionKey) === "1";
+        sessionStorage.setItem(sessionKey, "1");
+      } catch {
+        opened = false;
+      }
+      if (!opened) {
+        opened = window.name.includes(windowMarker);
+      }
+      if (!window.name.includes(windowMarker)) {
+        window.name = \`\${window.name || ""}\${windowMarker}\`;
+      }
+      return opened || isReloadNavigation();
+    }
+
+    let page = previewMode ? initialPage : (hasOpenedInThisTab() ? pageFromHash() : 0);
+
+    function fragmentsFor(index) {
+      return Array.from(slides[index].querySelectorAll(".fragment"));
+    }
+
+    function replacePageUrl() {
+      const targetHash = \`#\${page + 1}\`;
+      const targetUrl = \`\${location.href.split("#")[0]}\${targetHash}\`;
+      try {
+        history.replaceState({ markdownPptHtmlOpened: true }, "", targetUrl);
+      } catch {
+        if (location.hash !== targetHash) {
+          location.hash = targetHash;
+        }
+      }
+    }
+
+    function update() {
+      slides.forEach((slide, index) => {
+        slide.classList.toggle("active", index === page);
+        fragmentsFor(index).forEach((fragment, fragmentIndex) => {
+          fragment.classList.toggle("visible", previewMode || !stepReveal || fragmentIndex < reveals[index]);
+        });
+      });
+      counter.textContent = \`\${page + 1} / \${slides.length}\`;
+      progress.style.width = \`\${((page + 1) / slides.length) * 100}%\`;
+      if (!previewMode) {
+        replacePageUrl();
+      }
+      parent.postMessage({ type: "deck-state", page: page + 1, total: slides.length }, "*");
+    }
+
+    function next() {
+      const fragments = fragmentsFor(page);
+      if (!previewMode && stepReveal && reveals[page] < fragments.length) {
+        reveals[page] += 1;
+      } else if (page < slides.length - 1) {
+        page += 1;
+      }
+      update();
+    }
+
+    function prev() {
+      if (!previewMode && stepReveal && reveals[page] > 0) {
+        reveals[page] -= 1;
+      } else if (page > 0) {
+        page -= 1;
+        reveals[page] = previewMode || !stepReveal ? 0 : fragmentsFor(page).length;
+      }
+      update();
+    }
+
+    function isControlTarget(target) {
+      return target && target.closest && target.closest("#controls");
+    }
+
+    function navigateFromPointer(event) {
+      if (event.button && event.button !== 0) {
+        return;
+      }
+      if (isControlTarget(event.target)) {
+        return;
+      }
+      document.body.focus({ preventScroll: true });
+      next();
+    }
+
+    function handleKeydown(event) {
+      const key = event.key || event.code || "";
+      const keyCode = event.keyCode || event.which;
+      const forward = key === "ArrowRight" || key === "Right" || key === "ArrowDown" || key === "Down" || key === "PageDown" || key === " " || key === "Space" || key === "Spacebar" || keyCode === 39 || keyCode === 40 || keyCode === 34 || keyCode === 32;
+      const backward = key === "ArrowLeft" || key === "Left" || key === "ArrowUp" || key === "Up" || key === "PageUp" || key === "Backspace" || keyCode === 37 || keyCode === 38 || keyCode === 33 || keyCode === 8;
+      if (forward) {
+        event.preventDefault();
+        next();
+        return;
+      }
+      if (backward) {
+        event.preventDefault();
+        prev();
+      }
+    }
+
+    document.body.tabIndex = -1;
+    if (!previewMode) {
+      document.body.focus({ preventScroll: true });
+    }
+    document.querySelector("#next").addEventListener("click", (event) => {
+      event.stopPropagation();
+      next();
+    });
+    document.querySelector("#prev").addEventListener("click", (event) => {
+      event.stopPropagation();
+      prev();
+    });
+    document.addEventListener("click", navigateFromPointer);
+    window.addEventListener("keydown", handleKeydown, true);
+    window.addEventListener("message", (event) => {
+      if (event.data && event.data.type === "go-to-page") {
+        page = Math.min(Math.max(event.data.page - 1, 0), slides.length - 1);
+        update();
+      }
+    });
+    update();`;
+    }
+
+    function renderDeck(slides, initialPage, options = {}) {
+      const total = slides.length || 1;
+      const page = Math.min(Math.max(initialPage || 1, 1), total);
+      const title = slides[0] ? slides[0].title : "Markdown PPT";
+      const renderedSlides = slides.map((slide, index) => renderSlide(slide, index + 1, total)).join("\n");
+      const previewMode = options.previewMode === true;
+      const stepReveal = options.stepReveal !== false;
+      return `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <base href="${escapeHtml(document.baseURI)}">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(title)}</title>
+  <style>${deckCss()}</style>
+</head>
+<body data-preview-mode="${previewMode ? "true" : "false"}">
+  <main id="deck" aria-label="Markdown generated presentation">
+${renderedSlides}
+    <div id="progress"><span></span></div>
+    <nav id="controls" aria-label="Presentation controls">
+      <button id="prev" type="button" aria-label="Previous slide">‹</button>
+      <span id="counter">${page} / ${total}</span>
+      <button id="next" type="button" aria-label="Next slide">›</button>
+    </nav>
+  </main>
+  <script>
+    ${deckScript(page, previewMode, stepReveal)}
+  <\/script>
+</body>
+</html>`;
+    }
+
+    function deckCss() {
+      return `:root {
+      --bg: #050711;
+      --panel: rgba(22, 27, 52, 0.72);
+      --panel-strong: rgba(29, 36, 68, 0.9);
+      --line: rgba(123, 255, 235, 0.13);
+      --text: #f5f7fb;
+      --muted: #9ea5bb;
+      --body-muted: rgba(190, 196, 216, 0.72);
+      --accent: #52ffe5;
+      --accent-soft: rgba(82, 255, 229, 0.18);
+      --shadow: rgba(0, 0, 0, 0.38);
+      --deck-bg: url("../assets/bg.png");
+      --edge-offset: 4.6rem;
+      --title-offset: 0;
+      --title-gap: 3rem;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    body {
+      min-width: 100vw;
+      min-height: 100vh;
+    }
+
+    #deck {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: none;
+      overflow: hidden;
+    }
+
+    .slide.active {
+      display: block;
+    }
+
+    .slide-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(5, 7, 17, 0.12), rgba(5, 7, 17, 0.02)),
+        var(--deck-bg) center / cover no-repeat,
+        radial-gradient(circle at 52% 0%, rgba(83, 113, 255, 0.08), transparent 35%),
+        linear-gradient(112deg, #050612 0%, #070818 45%, #041212 100%);
+    }
+
+    .slide-bg::before {
+      display: none;
+    }
+
+    .slide-bg::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: 0.12;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.014) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.01) 1px, transparent 1px),
+        radial-gradient(circle at 88% 28%, rgba(82, 255, 229, 0.12) 0 1px, transparent 1.6px);
+      background-size: 64px 64px, 64px 64px, 11px 11px;
+      mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.58) 0%, rgba(0, 0, 0, 0.42) 52%, rgba(0, 0, 0, 0.08) 66%, transparent 78%, transparent 100%);
+    }
+
+    .slide-inner {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      padding: var(--edge-offset) var(--edge-offset) 7.8%;
+    }
+
+    h1, h2, h3, p, blockquote, figure {
+      margin: 0;
+    }
+
+    h1 {
+      max-width: 76%;
+      color: var(--accent);
+      font-size: clamp(56px, 7.6vw, 122px);
+      line-height: 1.08;
+      font-weight: 900;
+      text-shadow: 0 0 28px rgba(82, 255, 229, 0.24), 0 8px 0 rgba(0, 0, 0, 0.32);
+    }
+
+    h2 {
+      font-size: clamp(34px, 4.4vw, 70px);
+      line-height: 1.14;
+      font-weight: 850;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: clamp(18px, 2.1vw, 32px);
+      line-height: 1.25;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    p, li, figcaption {
+      color: var(--muted);
+      font-size: clamp(17px, 1.9vw, 30px);
+      line-height: 1.65;
+      letter-spacing: 0;
+    }
+
+    strong { color: var(--text); }
+    code {
+      display: inline-block;
+      padding: 0.08em 0.34em;
+      border: 1px solid rgba(255, 148, 76, 0.24);
+      border-radius: 0.18em;
+      background: rgba(255, 148, 76, 0.12);
+      color: #ffb374;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.88em;
+      font-weight: 750;
+      line-height: 1.18;
+      vertical-align: 0.06em;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .cover-copy {
+      position: absolute;
+      left: var(--edge-offset);
+      top: 17.5%;
+    }
+
+    .kicker {
+      margin-bottom: 2.3rem;
+      color: var(--accent);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: clamp(16px, 1.5vw, 28px);
+      letter-spacing: 0.18em;
+    }
+
+    .subtitle {
+      margin-top: 2.3rem;
+      max-width: 70%;
+      color: #c9cad5;
+      font-size: clamp(22px, 2.2vw, 36px);
+    }
+
+    .brand-mark {
+      position: absolute;
+      left: var(--edge-offset);
+      bottom: 13%;
+      color: rgba(255, 255, 255, 0.34);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: clamp(15px, 1.3vw, 23px);
+      letter-spacing: 0.12em;
+    }
+
+    .agenda h2 {
+      margin-bottom: 4.2%;
+    }
+
+    .agenda ol {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.25rem;
+      width: min(74rem, 100%);
+      padding: 0;
+      margin: 0;
+      list-style: none;
+    }
+
+    .agenda li {
+      display: flex;
+      align-items: baseline;
+      gap: 1.4rem;
+      min-height: 4.7rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.11);
+    }
+
+    .agenda span {
+      color: var(--accent);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: clamp(28px, 3.1vw, 48px);
+      font-weight: 900;
+    }
+
+    .agenda strong {
+      color: var(--text);
+      font-size: clamp(21px, 2.15vw, 34px);
+    }
+
+    .section-title {
+      position: absolute;
+      left: var(--edge-offset);
+      right: var(--edge-offset);
+      bottom: 25%;
+      width: calc(100% - var(--edge-offset) * 2);
+    }
+
+    .section-number {
+      margin-bottom: -1.4rem;
+      color: rgba(82, 255, 229, 0.2);
+      font-size: clamp(116px, 15vw, 240px);
+      line-height: 0.9;
+      font-weight: 900;
+    }
+
+    .section-title h2 {
+      max-width: min(82rem, 100%);
+      color: var(--accent);
+      font-size: clamp(54px, 7vw, 112px);
+      text-shadow: 0 0 28px rgba(82, 255, 229, 0.26), 0 7px 0 rgba(0, 0, 0, 0.35);
+    }
+
+    .content-stack {
+      width: 100%;
+      height: 100%;
+      padding-top: var(--title-offset);
+    }
+
+    .content-stack h2,
+    .matrix-wrap h2,
+    .timeline h2,
+    .image-copy h2 {
+      margin-bottom: var(--title-gap);
+    }
+
+    .card-list {
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    .point-card {
+      display: grid;
+      grid-template-columns: 1.5rem minmax(0, 1fr);
+      gap: 1.4rem;
+      align-items: center;
+      min-height: 7.8rem;
+      padding: 1.5rem 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      background: linear-gradient(90deg, var(--panel-strong), rgba(7, 22, 27, 0.72));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 18px 50px var(--shadow);
+    }
+
+    .point-card > div {
+      min-width: 0;
+    }
+
+    .point-card h3,
+    .point-card p,
+    .timeline h3,
+    .timeline p,
+    .matrix-card h3 {
+      display: block;
+      max-width: 100%;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-break: anywhere;
+    }
+
+    .dot {
+      width: 0.68rem;
+      height: 0.68rem;
+      border-radius: 3px;
+      background: var(--accent);
+      box-shadow: 0 0 14px rgba(82, 255, 229, 0.75);
+    }
+
+    .point-card p {
+      margin-top: 0.35rem;
+      color: var(--body-muted);
+      font-size: clamp(15px, 1.55vw, 24px);
+      line-height: 1.5;
+    }
+
+    .matrix-wrap {
+      height: 100%;
+      padding-top: var(--title-offset);
+    }
+
+    .matrix-grid {
+      display: grid;
+      gap: 2rem;
+      width: min(100%, 86rem);
+    }
+
+    .matrix-count-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .matrix-count-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .matrix-count-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .matrix-count-5,
+    .matrix-count-6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .matrix-card {
+      min-height: 10.6rem;
+      padding: 1.8rem 2.15rem;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 8px;
+      background: linear-gradient(105deg, rgba(20, 22, 50, 0.86), rgba(6, 24, 30, 0.72));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 24px 68px rgba(0, 0, 0, 0.32);
+    }
+
+    .matrix-card h3 {
+      font-size: clamp(22px, 2.2vw, 36px);
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .matrix-card p,
+    .matrix-card li {
+      color: var(--body-muted);
+      font-size: clamp(15px, 1.55vw, 24px);
+      line-height: 1.45;
+    }
+
+    .matrix-card p {
+      margin-top: 0.75rem;
+    }
+
+    .matrix-icon {
+      display: inline-block;
+      width: clamp(30px, 2.5vw, 44px);
+      aspect-ratio: 1;
+      margin-bottom: 1.35rem;
+      border-radius: 8px;
+      background: rgba(82, 255, 229, 0.82);
+      box-shadow: 0 0 12px rgba(82, 255, 229, 0.34), inset 0 -5px 10px rgba(0, 0, 0, 0.14);
+    }
+
+    .matrix-style-list .matrix-grid {
+      width: min(100%, 90rem);
+      gap: 2rem;
+    }
+
+    .matrix-style-list .matrix-count-3 {
+      width: min(100%, calc(100vw - var(--edge-offset) * 2));
+      gap: 1.35rem;
+    }
+
+    .matrix-style-list .matrix-card {
+      min-height: 15rem;
+      padding: 2.1rem 2.5rem;
+      background: linear-gradient(105deg, rgba(20, 22, 50, 0.88), rgba(5, 24, 29, 0.78));
+    }
+
+    .matrix-style-list .matrix-count-3 .matrix-card {
+      padding-inline: 2rem;
+    }
+
+    .matrix-style-list .matrix-card.is-emphasis {
+      border-color: rgba(82, 255, 229, 0.72);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 0 1px rgba(82, 255, 229, 0.22), 0 24px 72px rgba(0, 0, 0, 0.35);
+    }
+
+    .matrix-style-list .matrix-icon {
+      display: none;
+    }
+
+    .matrix-style-list h3 {
+      padding-bottom: 0.85rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .matrix-style-list ul {
+      margin: 1.05rem 0 0;
+      padding-left: 1.2em;
+    }
+
+    .matrix-style-list li + li {
+      margin-top: 0.32rem;
+    }
+
+    .matrix-style-feature .matrix-count-4 .matrix-card,
+    .matrix-style-feature .matrix-count-5 .matrix-card,
+    .matrix-style-feature .matrix-count-6 .matrix-card {
+      min-height: 13.4rem;
+    }
+
+    .quote-block {
+      position: absolute;
+      left: var(--edge-offset);
+      top: 18%;
+      width: 78%;
+    }
+
+    .quote-mark {
+      display: flex;
+      gap: 0.9rem;
+      height: 4.4rem;
+      align-items: flex-start;
+      filter: drop-shadow(0 0 14px rgba(82, 255, 229, 0.34));
+    }
+
+    .quote-mark span {
+      display: block;
+      width: 1.45rem;
+      height: 3.4rem;
+      border-radius: 0.25rem;
+      background: var(--accent);
+      transform: skewX(-12deg);
+      box-shadow: inset 0 -0.45rem 0 rgba(0, 0, 0, 0.16);
+    }
+
+    blockquote {
+      max-width: 84rem;
+      margin-top: 2.15rem;
+      color: var(--text);
+      font-size: clamp(38px, 4.6vw, 74px);
+      line-height: 1.35;
+      font-weight: 850;
+    }
+
+    figcaption {
+      margin-top: 2.2rem;
+      color: rgba(198, 202, 218, 0.68);
+      font-size: clamp(18px, 1.65vw, 28px);
+    }
+
+    .timeline {
+      height: 100%;
+      padding-top: var(--title-offset);
+    }
+
+    .timeline ol {
+      position: relative;
+      display: grid;
+      gap: 1.65rem;
+      width: min(58rem, 72%);
+      padding: 0;
+      margin: 0;
+      list-style: none;
+    }
+
+    .timeline li {
+      display: grid;
+      grid-template-columns: 4.8rem minmax(0, 1fr);
+      gap: 1.8rem;
+      align-items: start;
+    }
+
+    .timeline li > div {
+      min-width: 0;
+    }
+
+    .timeline li::before {
+      content: "";
+      position: absolute;
+      left: 2.35rem;
+      top: 4rem;
+      bottom: 4rem;
+      width: 2px;
+      background: rgba(255, 255, 255, 0.2);
+      z-index: -1;
+    }
+
+    .timeline span {
+      display: grid;
+      place-items: center;
+      width: 3.9rem;
+      height: 3.9rem;
+      min-width: 3.9rem;
+      min-height: 3.9rem;
+      aspect-ratio: 1 / 1;
+      border-radius: 50%;
+      box-sizing: border-box;
+      flex: 0 0 3.9rem;
+      background: var(--accent);
+      color: #02100f;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: clamp(24px, 2.8vw, 42px);
+      font-weight: 900;
+      line-height: 1;
+      box-shadow: 0 0 24px rgba(82, 255, 229, 0.35);
+    }
+
+    .timeline p {
+      margin-top: 0.4rem;
+    }
+
+    .image-text {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(18rem, 0.9fr);
+      gap: 6%;
+      height: 100%;
+      align-items: start;
+      padding-top: var(--title-offset);
+    }
+
+    .image-copy p {
+      margin-top: 1.2rem;
+      max-width: 39rem;
+    }
+
+    .image-frame {
+      min-height: 21rem;
+      padding: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(25, 37, 63, 0.88), rgba(5, 28, 30, 0.8));
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+    }
+
+    .image-frame img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      max-height: 24rem;
+      object-fit: contain;
+      border-radius: 4px;
+    }
+
+    .compare-table-wrap {
+      height: 100%;
+      padding-top: var(--title-offset);
+    }
+
+    .compare-table-wrap h2 {
+      margin-bottom: 2.35rem;
+    }
+
+    .compare-table-frame {
+      width: min(100%, 94rem);
+      border: 1px solid rgba(82, 255, 229, 0.16);
+      border-radius: 8px;
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, rgba(30, 35, 64, 0.82), rgba(5, 25, 30, 0.72)),
+        rgba(7, 13, 24, 0.82);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 28px 76px rgba(0, 0, 0, 0.34);
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .compare-table th,
+    .compare-table td {
+      padding: 1.05rem 1.35rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      color: rgba(220, 224, 238, 0.82);
+      font-size: clamp(14px, 1.22vw, 22px);
+      line-height: 1.58;
+      text-align: left;
+      vertical-align: middle;
+      word-break: break-word;
+    }
+
+    .compare-table th:last-child,
+    .compare-table td:last-child {
+      border-right: 0;
+    }
+
+    .compare-table tr:last-child th,
+    .compare-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .compare-table thead th {
+      padding-top: 1.25rem;
+      padding-bottom: 1.25rem;
+      background: linear-gradient(90deg, rgba(82, 255, 229, 0.13), rgba(82, 255, 229, 0.04));
+      color: #f3fffd;
+      font-size: clamp(15px, 1.32vw, 24px);
+      font-weight: 850;
+    }
+
+    .compare-table thead th:first-child {
+      width: 18%;
+      color: var(--accent);
+    }
+
+    .compare-table tbody th {
+      width: 18%;
+      color: #f3fffd;
+      font-weight: 850;
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .compare-table tbody tr:nth-child(even) {
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .compare-table code {
+      padding: 0.18rem 0.42rem;
+      border-radius: 5px;
+      font-size: 0.9em;
+    }
+
+    .status-cell,
+    .status-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.72rem;
+    }
+
+    .status-icon {
+      display: inline-grid;
+      place-items: center;
+      width: 1.1em;
+      min-width: 1.1em;
+      color: #55f0b3;
+      font-family: Consolas, "Courier New", monospace;
+      font-weight: 900;
+      line-height: 1;
+      text-shadow: 0 0 14px rgba(85, 240, 179, 0.34);
+    }
+
+    .status-no .status-icon {
+      color: rgba(153, 151, 190, 0.86);
+      text-shadow: none;
+    }
+
+    .status-no {
+      color: rgba(198, 199, 220, 0.76);
+    }
+
+    .status-list-wrap {
+      height: 100%;
+      padding-top: var(--title-offset);
+    }
+
+    .status-list-wrap h2 {
+      margin-bottom: 2.8rem;
+    }
+
+    .status-list {
+      display: grid;
+      gap: 1.2rem;
+      width: min(52rem, 72%);
+      padding: 0;
+      margin: 0;
+      list-style: none;
+    }
+
+    .status-item {
+      min-height: 3.2rem;
+      padding: 0.25rem 0;
+      color: rgba(238, 242, 252, 0.9);
+      font-size: clamp(20px, 2.1vw, 34px);
+      line-height: 1.35;
+      font-weight: 700;
+    }
+
+    .status-item .status-icon {
+      width: 1.35em;
+      min-width: 1.35em;
+      font-size: 0.9em;
+    }
+
+    .statement {
+      position: absolute;
+      left: var(--edge-offset);
+      top: var(--title-offset);
+      width: 80%;
+    }
+
+    .statement h2 {
+      margin-bottom: var(--title-gap);
+      font-size: clamp(43px, 5.2vw, 86px);
+    }
+
+    .statement p {
+      max-width: 62rem;
+      color: rgba(205, 209, 224, 0.76);
+    }
+
+    .fragment {
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 240ms ease, transform 240ms ease;
+    }
+
+    .fragment.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    #progress {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 4px;
+      z-index: 5;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    #progress span {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      box-shadow: 0 0 18px rgba(82, 255, 229, 0.75);
+      transition: width 220ms ease;
+    }
+
+    #controls {
+      position: absolute;
+      right: 2.2%;
+      bottom: 2.5%;
+      z-index: 6;
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      color: var(--accent);
+      font-family: Consolas, "Courier New", monospace;
+    }
+
+    #controls button {
+      width: 2.15rem;
+      height: 2.15rem;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--accent);
+      font-size: 3.2rem;
+      line-height: 1;
+      cursor: pointer;
+      text-shadow: 0 0 14px rgba(82, 255, 229, 0.45);
+    }
+
+    #counter {
+      min-width: 4.4rem;
+      text-align: center;
+      color: #d8fff9;
+      font-size: clamp(16px, 1.55vw, 28px);
+    }
+
+    @media (max-aspect-ratio: 4 / 3) {
+      :root { --edge-offset: 3.5rem; }
+      .slide-inner { padding: var(--edge-offset) var(--edge-offset) 10%; }
+      .agenda ol { grid-template-columns: 1fr; gap: 1.1rem; }
+      .image-text { grid-template-columns: 1fr; gap: 2rem; }
+      .compare-table-frame { width: 100%; overflow-x: auto; }
+      .compare-table { min-width: 54rem; }
+      .status-list { width: 100%; }
+      .matrix-grid,
+      .matrix-style-list .matrix-grid { grid-template-columns: 1fr; gap: 1rem; }
+      .matrix-card,
+      .matrix-style-list .matrix-card { min-height: auto; padding: 1.4rem 1.5rem; }
+      .image-frame { min-height: 12rem; }
+      .timeline ol { width: 100%; }
+      .section-title h2, h1 { max-width: 94%; }
+      blockquote { font-size: clamp(34px, 7.4vw, 68px); }
+    }`;
+    }
+
+    function slidePageForCursor(slides) {
+      const cursor = editor.selectionStart || 0;
+      let page = 1;
+      slides.forEach((slide, index) => {
+        if (slide.synthetic) {
+          return;
+        }
+        if ((slide.sourceStart || 0) <= cursor) {
+          page = index + 1;
+        }
+      });
+      return page;
+    }
+
+    function updateMeta(source, slides) {
+      const lines = source ? source.split("\n").length : 0;
+      editorMeta.textContent = `${source.length} 字 · ${lines} 行`;
+      previewMeta.textContent = `${Math.min(slidePageForCursor(slides), slides.length || 1)} / ${slides.length || 0}`;
+    }
+
+    function renderNow(options = {}) {
+      const shouldKeepEditorFocus = document.activeElement === editor;
+      const source = editor.value;
+      const parsed = splitFrontmatter(source);
+      syncExportControls(parsed.settings);
+      const exportOptions = readExportControls();
+      lastSlides = parseMarkdown(parsed.body, exportOptions, parsed.bodyOffset);
+      const initialPage = options.keepCurrent ? undefined : slidePageForCursor(lastSlides);
+      currentHtml = renderDeck(lastSlides, initialPage, { stepReveal: exportOptions.stepReveal });
+      previewHtml = renderDeck(lastSlides, initialPage, { previewMode: true, stepReveal: false });
+      preview.srcdoc = previewHtml;
+      if (shouldKeepEditorFocus) {
+        editor.focus({ preventScroll: true });
+      }
+      resizePreviewFrame();
+      updateMeta(source, lastSlides);
+      syncText.textContent = "已同步";
+    }
+
+    function scheduleRender() {
+      const saved = saveMarkdown();
+      syncText.textContent = saved ? "同步中 · 已自动保存" : "同步中 · 保存失败";
+      clearTimeout(renderTimer);
+      renderTimer = setTimeout(() => renderNow(), 120);
+    }
+
+    function syncCursorToPreview() {
+      const page = slidePageForCursor(lastSlides);
+      updateMeta(editor.value, lastSlides);
+      if (preview.contentWindow) {
+        preview.contentWindow.postMessage({ type: "go-to-page", page }, "*");
+      }
+    }
+
+    editor.addEventListener("input", scheduleRender);
+    editor.addEventListener("click", syncCursorToPreview);
+    editor.addEventListener("keyup", syncCursorToPreview);
+    [showAgendaInput, stepRevealInput].forEach((input) => {
+      input.addEventListener("change", () => {
+        exportControlsTouched = true;
+        renderNow({ keepCurrent: true });
+      });
+    });
+
+    window.addEventListener("message", (event) => {
+      if (event.data && event.data.type === "deck-state") {
+        previewMeta.textContent = `${event.data.page} / ${event.data.total}`;
+      }
+    });
+    window.addEventListener("resize", resizePreviewFrame);
+    if ("ResizeObserver" in window && previewFrameWrap) {
+      new ResizeObserver(resizePreviewFrame).observe(previewFrameWrap);
+    }
+
+    document.getElementById("saveMarkdown").addEventListener("click", () => {
+      saveMarkdown(true);
+    });
+
+    document.getElementById("downloadHtml").addEventListener("click", () => {
+      const blob = new Blob([currentHtml], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "markdown-ppt-preview.html";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    renderNow();
+  </script>
+</body>
+</html>
